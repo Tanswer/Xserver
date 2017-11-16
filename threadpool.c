@@ -282,10 +282,8 @@ void *thread_function(void *arg)
 // 线程池测试代码
 void *work(void *arg)
 {
-	char *p = (char *)arg;
 	printf("threadid = %u, thread_pool callback fuction : %s.\n", pthread_self(),p);
 
-    //sleep(1);
 }
 int main(int argc, char** argv)
 {
