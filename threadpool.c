@@ -289,40 +289,6 @@ void *work(void *arg)
 }
 int main(int argc, char** argv)
 {
-	char *args[] = {
-		"1",  "2",  "3",  "4",  "5",
-		"6",  "7",  "8",  "9",  "10",
-		"11", "12", "13", "14", "15",
-		"16", "17", "18", "19", "20",
-		"21", "22", "23", "24", "25",
-		"26", "27", "28", "29", "30"};
-	threadpool_t *threadpool = threadpool_init(1,4);
-	int i = 0, tag, value = 0;
-	for (i = 0; i < 30; i++) {
-        printf("i = %d\n",i);
-		do {
-			tag = threadpool_add_task(threadpool, work, args[i],1);
-			printf("tag = %d\n",tag);
-            if (tag == 1) {
-				/*
-                value = threadpool_resize(threadpool, 
-					threadpool->thread_num * 2, threadpool->queue_max_num * 2);
-				if (value == -1) {
-					printf("参数错误!\n");
-					exit(-1);
-				} else if (value == -2) {
-					printf("申请内存错误!\n");
-					exit(-1);
-				} else if (value == -3) {
-					printf("线程创建错误!\n");
-					exit(-1);
-				}*/
-                printf("队列满了\n");
-			}
-		}while (tag != 0);
-	}
-	sleep(2);
-	threadpool_destroy(threadpool);
-	return 0;
+    return 0;
 }
 
