@@ -104,15 +104,15 @@ ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n)
 
 ssize_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen)
 {
-    int i,n;
+    int rc,n;
     char c,*bufp = usrbuf;
-    for(i = 1; i<maxlen; i++){
-        if((n = rio_read(rp, &c, 1)) == 1){     //每次读取一个字符
+    for(n = 1; n<maxlen; n++){
+        if((rc = rio_read(rp, &c, 1)) == 1){     //每次读取一个字符
             *bufp++ = c;
             if(c == '\n')
                 break;
-        } else if(n == 0){
-            if(i == 1)      //空文件
+        } else if(rc == 0){
+            if(n == 1)      //空文件
                 return 0;
             else
                 break;      //读到部分数据
@@ -120,8 +120,8 @@ ssize_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen)
             return -1;      //出错
     }
 
-    *bufp = 0;
-    return i;
+    *bufp = '\0';
+    return n-1;
 }
 
 
@@ -134,9 +134,6 @@ ssize_t rio_readnb(rio_t *rp, void *usrbuf, size_t n)
 
     while(nleft > 0){
         if((nread = rio_read(rp, bufp, nleft)) < 0){
-            if(errno == EINTR)
-                nread = 0;
-            else
                 return -1;      
         } else if( nread == 0 )
             break;      //EOF
