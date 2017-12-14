@@ -8,16 +8,16 @@
 
 #define Min(x, y) ((x) < (y) ? (x) : (y))
 
-typedef struct mm_conf {
+typedef struct xm_conf_s {
     void *root;
     int port;
     int thread_nums;
-} mm_conf_t;
+} xm_conf_t;
 
 int open_listenfd(int port);
 
 int setnonblocking(int fd);
 
-int read_conf(char *file, mm_conf_t *cf, char *buf, int len);
+int read_conf(char *file, xm_conf_t *cf, char *buf, int len);
 
 #endif
