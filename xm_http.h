@@ -6,6 +6,10 @@
 #define MAXLINE     8192
 #define SHORTLINE   512
 
+#define CR '\r'
+#define LF '\n'
+#define CRLFCRLF "\r\n\r\n"
+
 typedef struct xm_type_s {
     const char *type;
     const char *value;

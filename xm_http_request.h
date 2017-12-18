@@ -2,8 +2,20 @@
 #define HTTP_REQUEST_H
 
 #include <time.h>
+#include "list.h"
 #include "util.h"
 
+
+
+#define XM_HTTP_PARSE_INVALID_METHOD    10
+#define XM_HTTP_PARSE_INVALID_REQUEST   11
+#define XM_HTTP_PARSE_INVALID_HEADER    12
+
+#define XM_HTTP_UNKNOWN     0x0001
+#define XM_HTTP_GET         0x0002
+#define XM_HTTP_HEAD        0x0004
+#define XM_HTTP_POST        0x0008
+#define XM_HTTP_PUT         0x0010
 
 /* 处理方法的返回值*/
 
@@ -22,26 +34,42 @@
 
 /* 请求的所有信息 结构 */
 typedef struct xm_http_request_s {
-    void *m_doc_root;
-    int m_sockfd;
-    int m_epfd;
-    int state;              /* 状态 */
+    void *doc_root;
+    int sockfd;
+    int epfd;
+    int state;              /* 解析状态 */
 
-    char m_buf[MAX_BUF];    /* 读缓冲区 */
+    char buf[MAX_BUF];      /* 读缓冲区 */
     /* 标识读缓冲区中已经读入的客户数据的最后一个字节的下一个位置 */
     
-    size_t m_check_inx,m_read_idx;
+    size_t pos, last;       /* 解析的位置和read 读取的位置*/
     
-    int m_method;           /* method */
-    void *m_request_start;
-    void *m_method_end;
-    void *m_uri_start;
-    void *m_uri_end;
-    void *m_path_start;
-    void *m_path_end;
-    void *m_query_start;
-    void *m_query_end;
-    void *request_end;
+    int method;             /* method */
+    void *method_end;       /* GET 等字符串结尾*/
+    
+    void *uri_start;        /*指向 uri的开始*/
+    void *uri_end;          /*指向 uri 结束后的下一个地址*/
+    
+    /*HTTP/1.1 前面的1代表major，后面的1代表 minor*/
+    int http_major;
+    int http_minor;
+
+    /*通过request_start和end 获取完整请求行*/
+    void *request_start;    /*请求行开始处*/
+    void *request_end;      /*请求行结尾处*/
+
+    void *path_start;
+    void *path_end;
+    void *query_start;
+    void *query_end;
+
+    struct list_head list;  /* 保存 header */
+    void *cur_header_key_start;
+    void *cur_header_key_end;
+    void *cur_header_value_start;
+    void *cur_header_value_end;
+
+    void *timer;
 
 } xm_http_request_t;
 
@@ -56,6 +84,22 @@ typedef struct xm_http_out_s {
     
     int status;
 }xm_http_out_t;
+
+
+typedef struct xm_http_header_s {
+    void *key_start, *key_end;
+    void *value_start, *value_end;
+    list_head list;
+}xm_http_header_t;
+
+
+typedef int (*xm_http_header_handler_pt) (xm_http_request_t *r, xm_http_out_t *o, char *data, int len);
+
+typedef struct {
+    char *name;
+    xm_http_header_handler_pt handler;
+}xm_http_header_handle_t;
+
 
 int xm_init_out(xm_http_out_t *o, int fd);
 int xm_free_out(xm_http_out_t *o);
