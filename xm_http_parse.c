@@ -315,7 +315,12 @@ done:
  *  Host:localhost
  *  User-Agent:Mozila/4.0(compatible:MSIE5.01:Windows NT5.0)
  *  Accept-Encoding:gzip,deflate.
- */ //解析上面的GET /sample.jsp HTTP/1.1以外的配置
+ */ //解析上面的GET /sample.jsp HTTP/1.1以外的配置,每个 header line 都是 key:value 形式的
+/*
+ * 返回值
+ * XM_OK    解析完所有的 header 
+ * XM_HTTP_PARSE_INVALID_HEADER 出错
+ */
 
 int xm_http_parse_header_line(xm_http_request_t *r)
 {
@@ -336,6 +341,7 @@ int xm_http_parse_header_line(xm_http_request_t *r)
     state = r->state;
     check((state ==0), "state should be zero");
     
+    /* 保存每一个 header line */
     xm_http_header_t *hd;
 
     for(pi = r->pos; pi<r->last; pi++){

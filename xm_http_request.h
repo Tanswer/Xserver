@@ -92,12 +92,12 @@ typedef struct xm_http_header_s {
     list_head list;
 }xm_http_header_t;
 
-
+/* data 为 key 对应的 value */
 typedef int (*xm_http_header_handler_pt) (xm_http_request_t *r, xm_http_out_t *o, char *data, int len);
 
 typedef struct {
-    char *name;
-    xm_http_header_handler_pt handler;
+    char *name;                         //header 中的 key
+    xm_http_header_handler_pt handler;  // key 对应的处理函数
 }xm_http_header_handle_t;
 
 
@@ -109,5 +109,7 @@ int xm_free_request(xm_http_request_t *r);
 
 void xm_http_handle_header(xm_http_request_t *r, xm_http_out_t *o);
 int xm_http_close_conn(xm_http_request_t *r);
+
+const char *trans_statuscode_to_shortmsg(int statuscode);
 
 #endif
