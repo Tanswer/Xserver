@@ -1,7 +1,7 @@
 #ifndef HTTP_REQUEST_H
 #define HTTP_REQUEST_H
 
-#include <time.h>
+#include <sys/time.h>
 #include "list.h"
 #include "util.h"
 

@@ -14,8 +14,8 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/time.h>
 #include <time.h>
-
 #include "dbg.h"
 #include "epoll.h"
 #include "xm_http_request.h"
@@ -138,6 +138,7 @@ void do_request(void *ptr)
             continue;
         }
 
+        /* 最后修改时间 */
         out -> mtime = sbuf.st_mtime;
 
         xm_http_handle_header(r, out);
