@@ -4,7 +4,12 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#define LISTENMAX 1024
+#define LISTENMAX   1024
+
+#define BUFLEN      8192
+
+#define XM_CONF_OK      0
+#define XM_CONF_ERROR   100
 
 #define Min(x, y) ((x) < (y) ? (x) : (y))
 
