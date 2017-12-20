@@ -302,6 +302,7 @@ done:
 
     r -> state = sw_start;
 
+    r -> STATE = 1;
     return XM_OK;
 }           
 
@@ -339,16 +340,16 @@ int xm_http_parse_header_line(xm_http_request_t *r)
     }state;
 
     state = r->state;
-    check((state ==0), "state should be zero");
+    check(state == 0, "state should be zero");
     
     /* 保存每一个 header line */
     xm_http_header_t *hd;
 
-    for(pi = r->pos; pi<r->last; pi++){
+    for(pi = r->pos; pi < r->last; pi++){
         p = (u_char *)&r->buf[pi % MAX_BUF];
         ch = *p;
 
-        switch(ch){
+        switch(state){
             case sw_start:
                 if(ch == CR || ch == LF){
                     break;
@@ -394,13 +395,13 @@ int xm_http_parse_header_line(xm_http_request_t *r)
                 if(ch == CR){
                     r -> cur_header_value_end = p;
                     state = sw_cr;
-                    break;
                 }
                 if(ch == LF){
                     r -> cur_header_value_end = p;
                     state = sw_crlf;
-                    break;
                 }
+                    
+                break;
 
             case sw_cr:
                 if(ch == LF){
@@ -447,5 +448,6 @@ int xm_http_parse_header_line(xm_http_request_t *r)
 done:
     r -> pos = pi+1;
     r -> state = sw_start;
+    r -> STATE = 0;
     return XM_OK;
 }

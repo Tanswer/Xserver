@@ -15,7 +15,7 @@
 #include "xm_http.h"
 #include "xm_http_request.h"
 #include "dbg.h"
-#include "threadpool.h"
+//#include "threadpool.h"
 #include "util.h"
 #include "timer.h"
 #include "epoll.h"
@@ -27,7 +27,6 @@ extern struct epoll_event *events;
 int main(int argc, char *argv[])
 {
     int rc;     //保存返回结果
-    int port = 5000;
     int lfd;
     char *conf = CONF;
 
@@ -43,7 +42,7 @@ int main(int argc, char *argv[])
     memset(&clientaddr, 0, sizeof(struct sockaddr_in));
     socklen_t len = sizeof(clientaddr);
 
-    lfd = open_listenfd(port);
+    lfd = open_listenfd(cf.port);
     rc = setnonblocking(lfd);
     check(rc == 0,"setnonblocking");
 

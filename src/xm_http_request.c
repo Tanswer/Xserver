@@ -35,8 +35,10 @@ int xm_init_request(xm_http_request_t *r, int fd, int epfd, xm_conf_t *cf)
     r -> epfd = epfd;
     r -> pos = r -> last = 0;
     r -> state = 0;
-    r -> doc_root = cf -> root;
+    r -> root = cf -> root;
     INIT_LIST_HEAD(&(r -> list));
+    
+    r -> STATE = 0;
 
     return XM_OK;
 }

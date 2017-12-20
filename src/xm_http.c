@@ -25,7 +25,7 @@
 
 
 /* 服务器根目录 */
-static char *doc_root = NULL;
+static char *root = NULL;
 
 /* 得到文件类型 */
 static const char* get_filetype(const char *type);
@@ -59,6 +59,7 @@ void do_request(void *ptr)
     char *plast = NULL;
     int rc, n;
     size_t remain_size;
+    root = r -> root;
 
     for(;;){ /* 循环读取客户数据并分析之 */
         plast = &r -> buf[r->last % MAX_BUF];
@@ -85,8 +86,10 @@ void do_request(void *ptr)
 
         r -> last += n;
         check(r->last - r->pos < MAX_BUF, "request buffer overflow!");
-        
-        log_info("ready to  parse request line");
+       
+        if(r->STATE == 0)
+        {
+        log_info("ready to parse request line");
         rc = xm_http_parse_request_line(r);
         if(rc == XM_AGAIN){
             continue;
@@ -95,16 +98,19 @@ void do_request(void *ptr)
            
             goto err;
         }
-
+        }
         
         printf("method = %.*s",(int)(r->method_end - r->request_start + 1),(char *)r->request_start);
-        printf("uri == %.*s",(int)(r->uri_end - r->uri_end),(char *)r->uri_start);
+        printf("uri == %.*s",(int)(r->uri_end - r->uri_start),(char *)r->uri_start);
         
         log_info("method = %.*s",(int)(r->method_end - r->request_start + 1),(char *)r->request_start);
-        log_info("uri == %.*s",(int)(r->uri_end - r->uri_end),(char *)r->uri_start);
+        log_info("uri = %.*s",(int)(r->uri_end - r->uri_start),(char *)r->uri_start);
 
-
+        if(r->STATE == 1)
+        {
+        log_info("ready to parse header line");
         rc = xm_http_parse_header_line(r);
+        log_info("rc == %d   %d",rc, XM_AGAIN);
         if(rc == XM_AGAIN){
             continue;
         }else if(rc != XM_OK){
@@ -112,7 +118,8 @@ void do_request(void *ptr)
        
             goto err;
         }
-
+        }
+        log_info("header line parse finished");
         /* 处理HTTP Header */
         xm_http_out_t *out = (xm_http_out_t *)malloc(sizeof(xm_http_out_t));
         if(out == NULL){
@@ -122,12 +129,14 @@ void do_request(void *ptr)
 
         rc = xm_init_out(out, fd);
         check(rc == XM_OK,"xm_init_out");
-
+        
+        log_info("out init finished");
         parse_uri(r->uri_start, r->uri_end - r->uri_start,filename,NULL);
-        printf("filename = %s\n",filename);
+        debug("filename = %s",filename);
 
         /* 404 */
         if(stat(filename,&sbuf) < 0){
+            debug("errno = %d",errno);
             do_error(fd, filename, "404","Not Found","server can not find the file");
             continue;
         }
@@ -188,19 +197,21 @@ static void parse_uri(char *uri, int uri_length, char *filename, char *cgiargs)
     int filename_length;
     if(question_mark){
         filename_length = (int)(question_mark - uri);
-        //
+        debug("filename_length = (question_mark - uri) = %d",filename_length);
     } else {
         filename_length = uri_length;
-        //
+        debug("filename_length = uri_length = %d",filename_length);
     }
 
     if(cgiargs){
         //to do
     }
 
-    strcpy(filename, doc_root);
-   
+    strcpy(filename, root);
+  
+    debug("before strncat ,filename = %s, uri = %.*s,  filename_length = %d",filename, uri_length,uri,filename_length);
     strncat(filename,uri,filename_length);
+    debug("after strncat ,filename = %s, uri = %.*s,  filename_length = %d",filename, uri_length,uri, strlen(filename));
 
     char *last_comp = strrchr(filename, '/');
     char *last_dot = strrchr(last_comp, '.');

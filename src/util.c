@@ -11,8 +11,10 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "util.h"
+#include "dbg.h"
 
 int open_listenfd(int port)
 {
@@ -54,4 +56,48 @@ int setnonblocking(int fd)
     if(res == -1)
         return -1;
     return 0;
+}
+
+
+int read_conf(char *conf, xm_conf_t *cf, char *buf, int len)
+{
+    FILE *fp = fopen(conf, "r");
+    if (!fp) {
+        log_err("cannot open config file: %s", conf);
+        return XM_CONF_ERROR;
+    }
+    int pos = 0;
+    char *delim_pos;
+    int line_len;
+    char *cur_pos = buf+pos;
+
+    while (fgets(cur_pos, len-pos, fp)) {
+        delim_pos = strstr(cur_pos, "=");
+        line_len = strlen(cur_pos);                                         
+        /*
+         * *         debug("read one line from conf: %s, len = %d", cur_pos, line_len);
+         * *                 */
+        if (!delim_pos)
+            return XM_CONF_ERROR;
+
+        if (cur_pos[strlen(cur_pos) - 1] == '\n') {
+            cur_pos[strlen(cur_pos) - 1] = '\0';
+        }
+
+        if (strncmp("root", cur_pos, 4) == 0) {
+            cf->root = delim_pos + 1;
+        }
+        if (strncmp("port", cur_pos, 4) == 0) {
+            cf->port = atoi(delim_pos + 1);                                                                      
+        }
+
+        if (strncmp("threadnum", cur_pos, 9) == 0) {
+            cf->threadnum = atoi(delim_pos + 1);                                                             
+        }
+        cur_pos += line_len;
+
+    }
+    fclose(fp);
+    return XM_CONF_OK;
+    
 }

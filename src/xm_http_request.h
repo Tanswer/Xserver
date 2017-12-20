@@ -34,10 +34,12 @@
 
 /* 请求的所有信息 结构 */
 typedef struct xm_http_request_s {
-    void *doc_root;
+    void *root;
     int sockfd;
     int epfd;
     int state;              /* 解析状态 */
+
+    int STATE;
 
     char buf[MAX_BUF];      /* 读缓冲区 */
     /* 标识读缓冲区中已经读入的客户数据的最后一个字节的下一个位置 */

@@ -12,12 +12,13 @@
 
 
 /* 在调试时输出调试信息 */
-#ifdef DEBUG
-#define debug(M, ...) fprintf(stderr,"DEBUG %s : %d: " M "\n",__FILE__,__LINE__, ##__VA_ARGS__)       /*  */
-#else
-#define debug(M, ...)       /* 空宏 */
-#endif
+//#ifdef DEBUG
+//#define debug(M, ...) fprintf(stderr,"DEBUG %s : %d: " M "\n",__FILE__,__LINE__, ##__VA_ARGS__)       /*  */
+//#else
+//#define debug(M, ...)       // 空宏 
+//#endif
 
+#define debug(M, ...) fprintf(stderr,"DEBUG %s : %d: " M "\n",__FILE__,__LINE__, ##__VA_ARGS__)       /*  */
 
 /* 翻译错误代码值 */
 #define trans_errno() (errno == 0 ? "None" : strerror(errno))
