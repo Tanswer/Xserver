@@ -5,10 +5,11 @@
  * @description:
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
+#include <getopt.h>
+#include <signal.h>
 #include <unistd.h>
-#include <errno.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -24,11 +25,68 @@
 
 extern struct epoll_event *events;
 
+static const struct option long_options[]=
+{
+    {"help", no_argument,NULL,'?'},
+    {"version", no_argument,NULL,'V'},
+    {"conf",required_argument,NULL,'c'},
+    {NULL,0,NULL,0}
+};
+
+static void usage() {
+    fprintf(stderr,
+            "zaver [option]... \n"
+            "  -c|--conf <config file>  Specify config file. Default ./xm.conf.\n"
+            "  -?|-h|--help             This information.\n"
+            "  -V|--version             Display program version.\n"
+            );
+}
+
+
 int main(int argc, char *argv[])
 {
     int rc;     //保存返回结果
     int lfd;
     char *conf = CONF;
+    int opt = 0;
+    int options_index = 0;
+    
+    /*
+     * parse argv 
+     * more detail visit: http://www.gnu.org/software/libc/manual/html_node/Getopt.html
+     */
+
+    if (argc == 1) {
+        usage();
+        return 0;                    
+    }
+
+    while ((opt=getopt_long(argc, argv,"Vc:?h",long_options,&options_index)) != EOF) {
+        switch (opt) {
+            case  0 : 
+                break;
+            case 'c':
+                conf = optarg;
+                break;
+            case 'V':
+                return 0;
+            case ':':
+            case 'h':
+            case '?':
+                usage();
+                return 0;
+        }
+    }
+    debug("conffile = %s", conf);
+    if (optind < argc) {
+        log_err("non-option ARGV-elements: ");
+        while (optind < argc)
+            log_err("%s ", argv[optind++]);
+        return 0;
+    }
+
+
+
 
     /*
      * read confile file
@@ -37,6 +95,23 @@ int main(int argc, char *argv[])
     xm_conf_t cf;
     rc = read_conf(conf, &cf, conf_buf, BUFLEN);
     check(rc == XM_CONF_OK, "read_conf");
+
+    /*
+    * install signal handle for SIGPIPE
+    * when a fd is closed by remote, writing to this fd will cause system send
+    * SIGPIPE to this process, which exit the program
+    */
+    struct sigaction sa;
+    memset(&sa, '\0', sizeof(sa));
+    sa.sa_handler = SIG_IGN;
+    sa.sa_flags = 0;
+    if (sigaction(SIGPIPE, &sa, NULL)) {
+        log_err("install sigal handler for SIGPIPE failed");
+        return 0;
+
+    }
+
+
 
     struct sockaddr_in clientaddr;
     memset(&clientaddr, 0, sizeof(struct sockaddr_in));
@@ -56,6 +131,7 @@ int main(int argc, char *argv[])
     event.events = EPOLLIN | EPOLLET;
     xm_epoll_add(epfd, lfd, &event);
 
+    log_info("Xserver start");
     int i, n, fd;
 
     while(1){

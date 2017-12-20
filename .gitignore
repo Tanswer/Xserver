@@ -1,0 +1,6 @@
+.swp
+*.log
+*.o
+build/
+*_test
+tags

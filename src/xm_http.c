@@ -100,8 +100,6 @@ void do_request(void *ptr)
         }
         }
         
-        //printf("method = %.*s",(int)(r->method_end - r->request_start + 1),(char *)r->request_start);
-        //printf("uri == %.*s",(int)(r->uri_end - r->uri_start),(char *)r->uri_start);
         
         log_info("method = %.*s",(int)(r->method_end - r->request_start + 1),(char *)r->request_start);
         log_info("uri = %.*s",(int)(r->uri_end - r->uri_start),(char *)r->uri_start);
@@ -110,7 +108,6 @@ void do_request(void *ptr)
         {
         log_info("ready to parse header line");
         rc = xm_http_parse_header_line(r);
-        log_info("rc == %d   %d",rc, XM_AGAIN);
         if(rc == XM_AGAIN){
             continue;
         }else if(rc != XM_OK){
@@ -133,19 +130,9 @@ void do_request(void *ptr)
         log_info("out init finished");
         parse_uri(r->uri_start, r->uri_end - r->uri_start,filename,NULL);
         debug("filename = %s",filename);
-        debug("filename = %s",filename);
     
-        char name[SHORTLINE] = "/home/Tanswer/Code/NP/http/html/index.html";
-        //memcpy(name,filename,strlen(filename));
-        //printf("aaaaaaaaaaaaa=%s\n",name);
-        
-        int rs = open(filename,O_RDONLY);
-        if(rs < 0)
-            debug("errno = %d",errno);
-       
-
         /* 404 */
-        if(stat(name,&sbuf) < 0){
+        if(stat(filename,&sbuf) < 0){
             debug("errno = %d",errno);
             do_error(fd, filename, "404","Not Found","server can not find the file");
             continue;
@@ -256,14 +243,14 @@ static void do_error(int fd, char *cause, char *errnum, char *shortmsg, char *lo
 {
     char header[MAXLINE], body[MAXLINE];
 
-    sprintf(body, "<html><title>Xmserver Error</title>");
+    sprintf(body, "<html><title>Xserver Error</title>");
     sprintf(body, "%s<body bgcolor=""ffffff"">\n", body);
     sprintf(body, "%s%s:%s\n",body, errnum, shortmsg);
     sprintf(body, "%s<p>%s: %s\n</p>",body, longmsg, cause);
     sprintf(body, "%s<hr><em>XM Web Server</em>\n</body></html>",body);
 
     sprintf(header, "HTTP/1.1 %s %s\r\n",errnum, shortmsg);
-    sprintf(header, "%sServer:Xmserver\r\n",header);
+    sprintf(header, "%sServer: Xserver\r\n",header);
     sprintf(header, "%sContent-type: text/html\r\n",header);
     sprintf(header, "%sConnection: close\r\n",header);
     sprintf(header, "%sContent-lenght: %d\r\n\r\n",header, (int)strlen(body));
@@ -304,7 +291,7 @@ static void serve_static(int fd, char *filename, size_t filesize, xm_http_out_t 
         sprintf(header, "%sLast-Modified: %s\r\n",header, buf);
     }
 
-    sprintf(header, "%sServer: Xmserver\r\n",header);
+    sprintf(header, "%sServer: Xserver\r\n",header);
     sprintf(header, "%s\r\n",header);
     /* header end */
     
@@ -316,8 +303,7 @@ static void serve_static(int fd, char *filename, size_t filesize, xm_http_out_t 
     }
 
     debug("filename = %s",filename);
-    //int srcfd = open(filename, O_RDONLY, 0);
-    int srcfd = open("/home/Tanswer/Code/NP/http/html/index.html", O_RDONLY, 0);
+    int srcfd = open(filename, O_RDONLY, 0);
     check(srcfd > 2, "open error");
 
     char *srcaddr = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
@@ -328,5 +314,4 @@ static void serve_static(int fd, char *filename, size_t filesize, xm_http_out_t 
     check(n == filesize, "rio_written error");
 
     munmap(srcaddr, filesize);
-
 }

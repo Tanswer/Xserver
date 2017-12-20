@@ -80,7 +80,6 @@ void xm_http_handle_header(xm_http_request_t *r, xm_http_out_t *o)
     xm_http_header_handle_t *header_in ;
     int len;
 
-    debug("start bianli");
 
     /* 遍历 r 中list开始的每个节点 ，使 pos 指向它 */
     list_for_each(pos, &(r->list)) {

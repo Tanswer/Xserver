@@ -1,0 +1,10 @@
+# !/bin/bash
+# -"- coding: utf-8 -"-
+# @filename:run.sh
+# @date: 2017年12月21日 00:53:11
+# @author: Tanswer
+# @description:
+
+cd build
+cmake .. && make
+cd .. && ./build/Xserver -c xm.conf
