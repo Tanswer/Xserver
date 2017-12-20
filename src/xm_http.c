@@ -100,8 +100,8 @@ void do_request(void *ptr)
         }
         }
         
-        printf("method = %.*s",(int)(r->method_end - r->request_start + 1),(char *)r->request_start);
-        printf("uri == %.*s",(int)(r->uri_end - r->uri_start),(char *)r->uri_start);
+        //printf("method = %.*s",(int)(r->method_end - r->request_start + 1),(char *)r->request_start);
+        //printf("uri == %.*s",(int)(r->uri_end - r->uri_start),(char *)r->uri_start);
         
         log_info("method = %.*s",(int)(r->method_end - r->request_start + 1),(char *)r->request_start);
         log_info("uri = %.*s",(int)(r->uri_end - r->uri_start),(char *)r->uri_start);
@@ -133,9 +133,19 @@ void do_request(void *ptr)
         log_info("out init finished");
         parse_uri(r->uri_start, r->uri_end - r->uri_start,filename,NULL);
         debug("filename = %s",filename);
+        debug("filename = %s",filename);
+    
+        char name[SHORTLINE] = "/home/Tanswer/Code/NP/http/html/index.html";
+        //memcpy(name,filename,strlen(filename));
+        //printf("aaaaaaaaaaaaa=%s\n",name);
+        
+        int rs = open(filename,O_RDONLY);
+        if(rs < 0)
+            debug("errno = %d",errno);
+       
 
         /* 404 */
-        if(stat(filename,&sbuf) < 0){
+        if(stat(name,&sbuf) < 0){
             debug("errno = %d",errno);
             do_error(fd, filename, "404","Not Found","server can not find the file");
             continue;
@@ -156,6 +166,8 @@ void do_request(void *ptr)
         if(out -> status == 0){
             out -> status = XM_HTTP_OK;
         }
+
+        debug("start serve_static");
 
         serve_static(fd, filename, sbuf.st_size, out);
 
@@ -303,7 +315,9 @@ static void serve_static(int fd, char *filename, size_t filesize, xm_http_out_t 
         return ;
     }
 
-    int srcfd = open(filename, O_RDONLY, 0);
+    debug("filename = %s",filename);
+    //int srcfd = open(filename, O_RDONLY, 0);
+    int srcfd = open("/home/Tanswer/Code/NP/http/html/index.html", O_RDONLY, 0);
     check(srcfd > 2, "open error");
 
     char *srcaddr = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);

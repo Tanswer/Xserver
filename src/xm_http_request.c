@@ -5,6 +5,10 @@
  * @description:
  */
 
+#ifdef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <stdio.h>
 #include <strings.h>
 #include <string.h>
@@ -14,6 +18,7 @@
 
 #include "xm_http_request.h"
 #include "list.h"
+#include "dbg.h"
 
 #define _XOPEN_SOURCE
 
@@ -75,10 +80,12 @@ void xm_http_handle_header(xm_http_request_t *r, xm_http_out_t *o)
     xm_http_header_handle_t *header_in ;
     int len;
 
+    debug("start bianli");
+
     /* 遍历 r 中list开始的每个节点 ，使 pos 指向它 */
-    list_for_each(pos, &r->list) {
+    list_for_each(pos, &(r->list)) {
         /* 得到与 pos 指向相关的数据结构 就是 xm_http_header_t ,保存在 hd 中*/
-        hd = list_entry(pos, xm_http_request_t, list);
+        hd = list_entry(pos, xm_http_header_t, list);
 
         /* 遍历 header_handle_t 结构数组 */
         for(header_in = xm_http_headers_in;
@@ -86,6 +93,9 @@ void xm_http_handle_header(xm_http_request_t *r, xm_http_out_t *o)
                 header_in++) {
             /* 找到 与 hd 的 名字相同的 */
             if(strncmp(hd->key_start, header_in->name, hd->key_end - hd->key_start) == 0){
+                
+                debug("key = %.*s, value = %.*s", hd->key_end-hd->key_start, hd->key_start, hd->value_end-hd->value_start, hd->value_start);
+                
                 len = hd ->value_end - hd -> value_start;
                 /* 调用对应的处理函数 */
                 (*(header_in->handler))(r, o, hd->value_start, len);

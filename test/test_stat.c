@@ -13,7 +13,7 @@
 
 int main()
 {
-    const char filename[255] = "/home/Tanswer/Code/NP/http/html/index.html";
+    char filename[255] = "/home/Tanswer/Code/NP/http/html/index.html";
 
     struct stat sbuf;
     if(stat(filename, &sbuf) < 0)
@@ -22,7 +22,7 @@ int main()
     }
 
     else{
-        printf("hahaha");
+        printf("hahaha\n");
         //printf("sbuf.st_mtime = %s\n",sbuf.st_mtime);
     }
     return 0;
