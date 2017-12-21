@@ -25,10 +25,11 @@
 
 extern struct epoll_event *events;
 
+
+/* 需要分析如何解析命令行参数 */
 static const struct option long_options[]=
 {
     {"help", no_argument,NULL,'?'},
-    {"version", no_argument,NULL,'V'},
     {"conf",required_argument,NULL,'c'},
     {NULL,0,NULL,0}
 };
@@ -38,7 +39,6 @@ static void usage() {
             "zaver [option]... \n"
             "  -c|--conf <config file>  Specify config file. Default ./xm.conf.\n"
             "  -?|-h|--help             This information.\n"
-            "  -V|--version             Display program version.\n"
             );
 }
 
@@ -46,7 +46,6 @@ static void usage() {
 int main(int argc, char *argv[])
 {
     int rc;     //保存返回结果
-    int lfd;
     char *conf = CONF;
     int opt = 0;
     int options_index = 0;
@@ -61,15 +60,13 @@ int main(int argc, char *argv[])
         return 0;                    
     }
 
-    while ((opt=getopt_long(argc, argv,"Vc:?h",long_options,&options_index)) != EOF) {
+    while ((opt=getopt_long(argc, argv,"c:?h",long_options,&options_index)) != EOF) {
         switch (opt) {
             case  0 : 
                 break;
             case 'c':
                 conf = optarg;
                 break;
-            case 'V':
-                return 0;
             case ':':
             case 'h':
             case '?':
@@ -96,6 +93,7 @@ int main(int argc, char *argv[])
     rc = read_conf(conf, &cf, conf_buf, BUFLEN);
     check(rc == XM_CONF_OK, "read_conf");
 
+
     /*
     * install signal handle for SIGPIPE
     * when a fd is closed by remote, writing to this fd will cause system send
@@ -111,8 +109,8 @@ int main(int argc, char *argv[])
 
     }
 
-
-
+    /* start listen */
+    int lfd;
     struct sockaddr_in clientaddr;
     memset(&clientaddr, 0, sizeof(struct sockaddr_in));
     socklen_t len = sizeof(clientaddr);
