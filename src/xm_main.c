@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include "xm_http.h"
 #include "xm_http_request.h"
@@ -134,7 +135,7 @@ int main(int argc, char *argv[])
      * create threadpool
      */
     xm_threadpool_t *threadpool = threadpool_init(cf.threadnum, cf.queuemaxnum);
-    check(threadpool == NULL, "threadpool_init error");
+    check(threadpool != NULL, "threadpool_init error");
 
 
 
@@ -154,6 +155,7 @@ int main(int argc, char *argv[])
                 int connfd;
                 while(1){
                     connfd = accept(lfd, (struct sockaddr *)&clientaddr, &len);
+                    
                     if(connfd < 0){
                         if((errno == EAGAIN) || (errno == EWOULDBLOCK)){
                             break;      //done
@@ -162,6 +164,17 @@ int main(int argc, char *argv[])
                             break;
                         }
                     }
+
+                    /*
+                     * 得到对方地址
+                     */
+                    struct sockaddr_in s;
+                    socklen_t len = sizeof(s);
+                    if(!getpeername(connfd, (struct sockaddr *)&s, &len)){
+                        debug("peer ip : %s",inet_ntoa(s.sin_addr));
+                        debug("peer port : %d",ntohs(s.sin_port));
+                    }
+
 
                     rc = setnonblocking(connfd);
                     check(rc == 0, "setnonblocking");
@@ -196,8 +209,7 @@ int main(int argc, char *argv[])
                     int tag = threadpool_resize(threadpool, cf.threadnum*2, cf.queuemaxnum*2);
                     check(tag == 0, "threadpool_resize error");
                 }
-                
-                //do_request(events[i].data.ptr);
+            //    do_request(events[i].data.ptr);
             }
         }
     }

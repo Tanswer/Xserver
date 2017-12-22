@@ -54,6 +54,7 @@ xm_threadpool_t *threadpool_init(int thread_num, int queue_max_num)
                 break;
             }
         }
+        debug("thread_num = %d, queue_max_num = %d",threadpool->thread_num, threadpool->queue_max_num);
         return threadpool;
     }while(0);
 
