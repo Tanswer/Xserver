@@ -1,7 +1,7 @@
-.swp
+src/*.swp
 *.log
 *.o
 build/
 *_test
-a.out
+test/a.out
 tags
