@@ -66,18 +66,18 @@ int read_conf(char *conf, xm_conf_t *cf, char *buf, int len)
         log_err("cannot open config file: %s", conf);
         return XM_CONF_ERROR;
     }
-    int pos = 0;
-    char *delim_pos;
-    int line_len;
-    char *cur_pos = buf+pos;
+    char *equalsign_pos;
+    int line_length;
+    char *cur_pos = buf;
 
-    while (fgets(cur_pos, len-pos, fp)) {
-        delim_pos = strstr(cur_pos, "=");
-        line_len = strlen(cur_pos);                                         
+    /* 读取以行 */
+    while (fgets(cur_pos, len, fp)) {
+        equalsign_pos = strstr(cur_pos, "=");   /* 等于号的位置 */
+        line_length = strlen(cur_pos);                                         
         /*
-         * *         debug("read one line from conf: %s, len = %d", cur_pos, line_len);
-         * *                 */
-        if (!delim_pos)
+         * debug("read one line from conf: %s, len = %d", cur_pos, line_len);
+         */
+        if (!equalsign_pos)
             return XM_CONF_ERROR;
 
         if (cur_pos[strlen(cur_pos) - 1] == '\n') {
@@ -85,19 +85,22 @@ int read_conf(char *conf, xm_conf_t *cf, char *buf, int len)
         }
 
         if (strncmp("root", cur_pos, 4) == 0) {
-            cf->root = delim_pos + 1;
+            cf->root = equalsign_pos + 1;
         }
         if (strncmp("port", cur_pos, 4) == 0) {
-            cf->port = atoi(delim_pos + 1);                                                                      
+            cf->port = atoi(equalsign_pos + 1);                                                                      
         }
 
         if (strncmp("threadnum", cur_pos, 9) == 0) {
-            cf->threadnum = atoi(delim_pos + 1);                                                             
+            cf->threadnum = atoi(equalsign_pos + 1);                                                             
         }
-        cur_pos += line_len;
-
+        
+        if (strncmp("queuemaxnum", cur_pos, 11) == 0) {
+            cf->queuemaxnum = atoi(equalsign_pos + 1);                                                             
+        }
+        cur_pos += line_length;
+        len -= line_length;
     }
     fclose(fp);
     return XM_CONF_OK;
-    
 }

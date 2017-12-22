@@ -17,6 +17,7 @@ typedef struct xm_conf_s {
     void *root;
     int port;
     int threadnum;
+    int queuemaxnum;
 } xm_conf_t;
 
 int open_listenfd(int port);

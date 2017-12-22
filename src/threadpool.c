@@ -8,16 +8,15 @@
 #include "threadpool.h"
 #include "dbg.h"
 
-threadpool_t *threadpool_init(int thread_num, int queue_max_num)
+xm_threadpool_t *threadpool_init(int thread_num, int queue_max_num)
 {
-    threadpool_t *threadpool = NULL;
+    xm_threadpool_t *threadpool = NULL;
 
-    //放到一个while循环中???
+    //do while 
     do{
-        threadpool = (threadpool_t *)malloc(sizeof(threadpool_t));
+        threadpool = (xm_threadpool_t *)malloc(sizeof(xm_threadpool_t));
         if(threadpool == NULL)
             break;
-        //check(threadpool == NULL, "_Thread_local:malloc");
         
         threadpool -> thread_num = thread_num;
         threadpool -> free_thread_num = thread_num;
@@ -64,7 +63,7 @@ threadpool_t *threadpool_init(int thread_num, int queue_max_num)
 
 
 //销毁线程池
-int threadpool_destroy(threadpool_t * threadpool)
+int threadpool_destroy(xm_threadpool_t * threadpool)
 {
     //先上锁
     pthread_mutex_lock(&(threadpool -> mutex));
@@ -110,7 +109,7 @@ int threadpool_destroy(threadpool_t * threadpool)
 
 
     //清空任务队列
-    task_t *free_task;
+    xm_task_t *free_task;
     while(threadpool -> head != NULL){
         free_task = threadpool -> head;
         threadpool -> head  = threadpool -> head -> next;
@@ -129,7 +128,7 @@ int threadpool_destroy(threadpool_t * threadpool)
  * return -2 申请内存错误
  * return -3 线程创建错误
  */
-int threadpool_resize(threadpool_t *threadpool, int thread_num, int queue_num)
+int threadpool_resize(xm_threadpool_t *threadpool, int thread_num, int queue_num)
 {
     //不允许减少规模
     if(thread_num < threadpool -> thread_num || queue_num < threadpool -> queue_max_num){
@@ -166,20 +165,20 @@ int threadpool_resize(threadpool_t *threadpool, int thread_num, int queue_num)
  * return  1 表示任务队列已满或所有线程忙碌(仅当非阻塞模式)
  * return -1 表示其他错误
  */ 
-int threadpool_add_task(threadpool_t *threadpool, void *(task_callback)(void *), void *arg, int is_block)
+int threadpool_add_task(xm_threadpool_t *threadpool, void *(task_callback)(void *), void *arg, int is_block)
 {
     pthread_mutex_lock(&(threadpool -> mutex));
     //队列满的时候
     while((threadpool -> queue_curr_num == threadpool -> thread_num) && 
             !(threadpool -> queue_close || threadpool -> pool_close)){
-        if(is_block == 1){ //阻塞模式
+        if(is_block == 1){ //阻塞模式 等着任务队列不满
             printf("threadpool -> queue_curr_num = %d\n",threadpool -> queue_curr_num);
             printf("threadpool -> queue_max_num = %d\n",threadpool -> queue_max_num);
-
+            
             pthread_cond_wait(&(threadpool -> queue_not_full), &(threadpool -> mutex));
         } else {
             pthread_mutex_unlock(&(threadpool -> mutex));
-            return 1;
+            return 1;   //不阻塞 直接返回
         }
     }
 
@@ -196,7 +195,7 @@ int threadpool_add_task(threadpool_t *threadpool, void *(task_callback)(void *),
     }
 
     //正常的情况下
-    task_t *new_task = (task_t *)malloc(sizeof(task_t));
+    xm_task_t *new_task = (xm_task_t *)malloc(sizeof(xm_task_t));
     if(new_task == NULL){
         pthread_mutex_unlock(&(threadpool -> mutex));
         return -1;
@@ -228,8 +227,8 @@ int threadpool_add_task(threadpool_t *threadpool, void *(task_callback)(void *),
 //线程处理函数
 void *thread_function(void *arg)
 {
-    threadpool_t *threadpool = (threadpool_t *)arg;
-    task_t *task = NULL;
+    xm_threadpool_t *threadpool = (xm_threadpool_t *)arg;
+    xm_task_t *task = NULL;
     while(1){
         pthread_mutex_lock(&(threadpool -> mutex));
 
@@ -276,17 +275,5 @@ void *thread_function(void *arg)
         pthread_mutex_unlock(&(threadpool -> mutex));
     }
 
-}
-
-
-// 线程池测试代码
-void *work(void *arg)
-{
-	printf("threadid = %u, thread_pool callback fuction : %s.\n", pthread_self(),p);
-
-}
-int main(int argc, char** argv)
-{
-    return 0;
 }
 

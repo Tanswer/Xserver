@@ -133,7 +133,6 @@ void do_request(void *ptr)
     
         /* 404 */
         if(stat(filename,&sbuf) < 0){
-            debug("errno = %d",errno);
             do_error(fd, filename, "404","Not Found","server can not find the file");
             continue;
         }
@@ -210,7 +209,6 @@ static void parse_uri(char *uri, int uri_length, char *filename, char *cgiargs)
   
     debug("before strncat ,filename = %s, uri = %.*s,  filename_length = %d",filename, uri_length,uri,filename_length);
     strncat(filename,uri,filename_length);
-    debug("after strncat ,filename = %s, uri = %.*s,  filename_length = %d",filename, uri_length,uri, strlen(filename));
 
     char *last_comp = strrchr(filename, '/');
     char *last_dot = strrchr(last_comp, '.');
@@ -302,7 +300,6 @@ static void serve_static(int fd, char *filename, size_t filesize, xm_http_out_t 
         return ;
     }
 
-    debug("filename = %s",filename);
     int srcfd = open(filename, O_RDONLY, 0);
     check(srcfd > 2, "open error");
 

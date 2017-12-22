@@ -16,7 +16,7 @@
 #include "xm_http.h"
 #include "xm_http_request.h"
 #include "dbg.h"
-//#include "threadpool.h"
+#include "threadpool.h"
 #include "util.h"
 #include "timer.h"
 #include "epoll.h"
@@ -36,7 +36,7 @@ static const struct option long_options[]=
 
 static void usage() {
     fprintf(stderr,
-            "zaver [option]... \n"
+            "Xserver [option]... \n"
             "  -c|--conf <config file>  Specify config file. Default ./xm.conf.\n"
             "  -?|-h|--help             This information.\n"
             );
@@ -47,20 +47,20 @@ int main(int argc, char *argv[])
 {
     int rc;     //保存返回结果
     char *conf = CONF;
-    int opt = 0;
-    int options_index = 0;
     
     /*
      * parse argv 
      * more detail visit: http://www.gnu.org/software/libc/manual/html_node/Getopt.html
      */
-
+    int opt = 0;
+    int options_index = 0;
+    
     if (argc == 1) {
         usage();
         return 0;                    
     }
 
-    while ((opt=getopt_long(argc, argv,"c:?h",long_options,&options_index)) != EOF) {
+    while ((opt=getopt_long(argc, argv,"c:?h",long_options,&options_index)) != -1) {
         switch (opt) {
             case  0 : 
                 break;
@@ -96,13 +96,14 @@ int main(int argc, char *argv[])
 
     /*
     * install signal handle for SIGPIPE
-    * when a fd is closed by remote, writing to this fd will cause system send
-    * SIGPIPE to this process, which exit the program
+    * 默认情况下往一个关闭的 socket 中写数据将引发 SIGPIPE 信号，
+    * 程序接收到 SIGPIPE 信号将结束进程(这就是为什么服务器有时候莫名退出)
+    * 所以需要在代码中捕获并处理该信号
     */
     struct sigaction sa;
     memset(&sa, '\0', sizeof(sa));
-    sa.sa_handler = SIG_IGN;
-    sa.sa_flags = 0;
+    sa.sa_handler = SIG_IGN;    // SIG_IGN 忽略此信号
+    sa.sa_flags = 0; 
     if (sigaction(SIGPIPE, &sa, NULL)) {
         log_err("install sigal handler for SIGPIPE failed");
         return 0;
@@ -128,6 +129,15 @@ int main(int argc, char *argv[])
     event.data.ptr = (void *)request;
     event.events = EPOLLIN | EPOLLET;
     xm_epoll_add(epfd, lfd, &event);
+
+    /*
+     * create threadpool
+     */
+    xm_threadpool_t *threadpool = threadpool_init(cf.threadnum, cf.queuemaxnum);
+    check(threadpool == NULL, "threadpool_init error");
+
+
+
 
     log_info("Xserver start");
     int i, n, fd;
@@ -181,7 +191,13 @@ int main(int argc, char *argv[])
 
                 log_info("new data from fd %d",fd);
 
-                do_request(events[i].data.ptr);
+                rc = threadpool_add_task(threadpool, do_request, events[i].data.ptr, 0);
+                if(rc == 0){
+                    int tag = threadpool_resize(threadpool, cf.threadnum*2, cf.queuemaxnum*2);
+                    check(tag == 0, "threadpool_resize error");
+                }
+                
+                //do_request(events[i].data.ptr);
             }
         }
     }
@@ -189,9 +205,3 @@ int main(int argc, char *argv[])
     return 0;
 }
     
-
-
-
-
-
-
