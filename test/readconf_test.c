@@ -11,62 +11,72 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+
 #include "../src/util.h"
+#include "../src/dbg.h"
+#include "../src/cJSON.h"
 
-int read_conf(char *filename, xm_conf_t *cf, char *buf, int len)
+int read_conf(char *filename, xm_conf_t *cf)
 {
-    FILE *fp;
-    fp = fopen(filename, "r");
-    if(!fp)
-    {
-        return -1;
+
+    struct stat sbuf;
+    if(stat(filename, &sbuf) < 0){
+        log_err("stat error");
     }
 
-    char *cur_pos = buf;
-    int line_length;
-    char *equal_pos;
+    int srcfd = open(filename, O_RDONLY, 0);
+    
 
-    while(fgets(cur_pos, len, fp)) {
-        equal_pos = strstr(cur_pos, "=");
-        line_length = strlen(cur_pos);
+    char *srcaddr = mmap(NULL, sbuf.st_size, PROT_READ, MAP_PRIVATE, srcfd, 0);
+    check(srcaddr != (void *)-1, "mmap error");
+    close(srcfd);
 
-        if(!equal_pos){
-            return -1;
-        }
+    //debug("srcaddr = %s",srcaddr);
 
-        if(cur_pos[line_length-1] == '\n'){
-            cur_pos[line_length-1] = '\0';
-        }
+    cJSON* pJson = cJSON_Parse(srcaddr);
+    check(pJson != NULL,"cJSON_Parse");
 
-        if(strncmp("root", cur_pos, 4) == 0){
-            cf -> root = equal_pos+1;
-        }
-        if(strncmp("port", cur_pos, 4) == 0){
-            cf -> port = atoi(equal_pos+1);
-        }
-        if(strncmp("threadnum", cur_pos, 9) == 0){
-            cf -> threadnum = atoi(equal_pos+1);
-        }
+    cJSON *pSub;
 
-        cur_pos += line_length;
-        len -=line_length;
-    }
-    fclose(fp);
+    /* get root */
+    pSub = cJSON_GetObjectItem(pJson, "root");
+    check(pSub != NULL, "cJSON_GetObjectItem");
+    cf -> root = (char *)pSub->valuestring;
+
+    /* get port */
+    pSub = cJSON_GetObjectItem(pJson, "port");
+    check(pSub != NULL, "cJSON_GetObjectItem");
+    cf -> port = pSub->valueint;
+
+    /* get threadnum */
+    pSub = cJSON_GetObjectItem(pJson, "threadnum");
+    check(pSub != NULL, "cJSON_GetObjectItem");
+    cf -> threadnum = pSub->valueint;
+
+
+    /* get queuemaxnum */
+    pSub = cJSON_GetObjectItem(pJson, "queuemaxnum");
+    check(pSub != NULL, "cJSON_GetObjectItem");
+    cf -> queuemaxnum = pSub->valueint;
+
+    munmap(srcaddr, sbuf.st_size);
+
     return 0;
 }
 
 int main()
 {
     xm_conf_t cf;
-    int buflen = 8192;
-    char conf_buf[buflen];
     char *conf_file = "../xm.conf";
 
-    int rc = read_conf(conf_file, &cf, conf_buf, buflen);
+    int rc = read_conf(conf_file, &cf);
     if(rc == 0){
-        printf("root = %s\n",cf.root);
-        printf("port = %d\n",cf.port);
-        printf("threadnum = %d\n",cf.threadnum);
+        printf("root === %s\n",cf.root );
+        printf("port === %d\n",cf.port );
+        printf("threadnum === %d\n",cf.threadnum );
+        printf("queuemaxnum === %d\n",cf.queuemaxnum );
     }else{
         printf("read fail\n");
     }

@@ -89,9 +89,8 @@ int main(int argc, char *argv[])
     /*
      * read confile file
      */
-    char conf_buf[BUFLEN];
     xm_conf_t cf;
-    rc = read_conf(conf, &cf, conf_buf, BUFLEN);
+    rc = read_conf(conf, &cf);
     check(rc == XM_CONF_OK, "read_conf");
 
 
@@ -134,8 +133,8 @@ int main(int argc, char *argv[])
     /*
      * create threadpool
      */
-    xm_threadpool_t *threadpool = threadpool_init(cf.threadnum, cf.queuemaxnum);
-    check(threadpool != NULL, "threadpool_init error");
+//    xm_threadpool_t *threadpool = threadpool_init(cf.threadnum, cf.queuemaxnum);
+//    check(threadpool != NULL, "threadpool_init error");
 
 
 
@@ -203,13 +202,14 @@ int main(int argc, char *argv[])
                 }
 
                 log_info("new data from fd %d",fd);
-
+/*
                 rc = threadpool_add_task(threadpool, do_request, events[i].data.ptr, 0);
                 if(rc == 0){
                     int tag = threadpool_resize(threadpool, cf.threadnum*2, cf.queuemaxnum*2);
                     check(tag == 0, "threadpool_resize error");
                 }
-            //    do_request(events[i].data.ptr);
+  */
+                do_request(events[i].data.ptr);
             }
         }
     }
