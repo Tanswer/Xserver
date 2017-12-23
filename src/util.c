@@ -13,7 +13,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 #include "util.h"
+#include "cJSON.h"
 #include "dbg.h"
 
 int open_listenfd(int port)
@@ -59,48 +62,50 @@ int setnonblocking(int fd)
 }
 
 
-int read_conf(char *conf, xm_conf_t *cf, char *buf, int len)
+int read_conf(char *filename, xm_conf_t *cf)
 {
-    FILE *fp = fopen(conf, "r");
-    if (!fp) {
-        log_err("cannot open config file: %s", conf);
-        return XM_CONF_ERROR;
+
+    struct stat sbuf;
+    if(stat(filename, &sbuf) < 0){
+        log_err("stat error");
     }
-    char *equalsign_pos;
-    int line_length;
-    char *cur_pos = buf;
 
-    /* 读取以行 */
-    while (fgets(cur_pos, len, fp)) {
-        equalsign_pos = strstr(cur_pos, "=");   /* 等于号的位置 */
-        line_length = strlen(cur_pos);                                         
-        /*
-         * debug("read one line from conf: %s, len = %d", cur_pos, line_len);
-         */
-        if (!equalsign_pos)
-            return XM_CONF_ERROR;
+    int srcfd = open(filename, O_RDONLY, 0);
+    
 
-        if (cur_pos[strlen(cur_pos) - 1] == '\n') {
-            cur_pos[strlen(cur_pos) - 1] = '\0';
-        }
+    char *srcaddr = mmap(NULL, sbuf.st_size, PROT_READ, MAP_PRIVATE, srcfd, 0);
+    check(srcaddr != (void *)-1, "mmap error");
+    close(srcfd);
 
-        if (strncmp("root", cur_pos, 4) == 0) {
-            cf->root = equalsign_pos + 1;
-        }
-        if (strncmp("port", cur_pos, 4) == 0) {
-            cf->port = atoi(equalsign_pos + 1);                                                                      
-        }
+    //debug("srcaddr = %s",srcaddr);
 
-        if (strncmp("threadnum", cur_pos, 9) == 0) {
-            cf->threadnum = atoi(equalsign_pos + 1);                                                             
-        }
-        
-        if (strncmp("queuemaxnum", cur_pos, 11) == 0) {
-            cf->queuemaxnum = atoi(equalsign_pos + 1);                                                             
-        }
-        cur_pos += line_length;
-        len -= line_length;
-    }
-    fclose(fp);
+    cJSON* pJson = cJSON_Parse(srcaddr);
+    check(pJson != NULL,"cJSON_Parse");
+
+    cJSON *pSub;
+
+    /* get root */
+    pSub = cJSON_GetObjectItem(pJson, "root");
+    check(pSub != NULL, "cJSON_GetObjectItem");
+    cf -> root = (char *)pSub->valuestring;
+
+    /* get port */
+    pSub = cJSON_GetObjectItem(pJson, "port");
+    check(pSub != NULL, "cJSON_GetObjectItem");
+    cf -> port = pSub->valueint;
+
+    /* get threadnum */
+    pSub = cJSON_GetObjectItem(pJson, "threadnum");
+    check(pSub != NULL, "cJSON_GetObjectItem");
+    cf -> threadnum = pSub->valueint;
+
+
+    /* get queuemaxnum */
+    pSub = cJSON_GetObjectItem(pJson, "queuemaxnum");
+    check(pSub != NULL, "cJSON_GetObjectItem");
+    cf -> queuemaxnum = pSub->valueint;
+
+    munmap(srcaddr, sbuf.st_size);
+
     return XM_CONF_OK;
 }

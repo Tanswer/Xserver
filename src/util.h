@@ -24,6 +24,6 @@ int open_listenfd(int port);
 
 int setnonblocking(int fd);
 
-int read_conf(char *file, xm_conf_t *cf, char *buf, int len);
+int read_conf(char *file, xm_conf_t *cf);
 
 #endif
