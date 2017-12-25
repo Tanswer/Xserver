@@ -23,7 +23,6 @@
 #include "rio.h"
 #include "timer.h"
 
-
 /* 服务器根目录 */
 static char *root = NULL;
 
@@ -35,6 +34,7 @@ static void parse_uri(char *uri, int uri_length, char *filename, char *cgiargs);
 static void do_error(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg);
 /* 静态请求回复 */
 static void serve_static(int fd, char *filename, size_t filesize, xm_http_out_t *out);
+
 
 /* 所以请求文件类型 */
 xm_type_t xm_type [] = 
@@ -60,6 +60,8 @@ void do_request(void *ptr)
     int rc, n;
     size_t remain_size;
     root = r -> root;
+
+    xm_del_timer(r);
 
     for(;;){ /* 循环读取客户数据并分析之 */
         plast = &r -> buf[r->last % MAX_BUF];
@@ -89,15 +91,14 @@ void do_request(void *ptr)
        
         if(r->STATE == 0)
         {
-        log_info("ready to parse request line");
-        rc = xm_http_parse_request_line(r);
-        if(rc == XM_AGAIN){
-            continue;
-        }else if(rc != XM_OK){
-            log_err("rc != XM_OK");
-           
-            goto err;
-        }
+            log_info("ready to parse request line");
+            rc = xm_http_parse_request_line(r);
+            if(rc == XM_AGAIN){
+                continue;
+            }else if(rc != XM_OK){
+                log_err("rc != XM_OK");
+                goto err;
+            }
         }
         
         
@@ -106,16 +107,16 @@ void do_request(void *ptr)
 
         if(r->STATE == 1)
         {
-        log_info("ready to parse header line");
-        rc = xm_http_parse_header_line(r);
-        if(rc == XM_AGAIN){
-            continue;
-        }else if(rc != XM_OK){
-            log_err("rc != XM_OK");
-       
-            goto err;
+            log_info("ready to parse header line");
+            rc = xm_http_parse_header_line(r);
+            if(rc == XM_AGAIN){
+                continue;
+            }else if(rc != XM_OK){
+                log_err("rc != XM_OK");
+                goto err;
+            }
         }
-        }
+
         log_info("header line parse finished");
         /* 处理HTTP Header */
         xm_http_out_t *out = (xm_http_out_t *)malloc(sizeof(xm_http_out_t));
@@ -128,9 +129,11 @@ void do_request(void *ptr)
         check(rc == XM_OK,"xm_init_out");
         
         log_info("out init finished");
+        
         parse_uri(r->uri_start, r->uri_end - r->uri_start,filename,NULL);
         debug("filename = %s",filename);
     
+
         /* 404 */
         if(stat(filename,&sbuf) < 0){
             do_error(fd, filename, "404","Not Found","server can not find the file");
@@ -171,7 +174,8 @@ void do_request(void *ptr)
     event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
 
     xm_epoll_mod(r->epfd, r->sockfd, &event);
-    //xm_add_timer(r, T)
+    xm_add_timer(r, TIMEOUT_DEFAULT, xm_http_close_conn);
+    
     return ;
 
 err:
@@ -209,6 +213,7 @@ static void parse_uri(char *uri, int uri_length, char *filename, char *cgiargs)
   
     debug("before strncat ,filename = %s, uri = %.*s,  filename_length = %d",filename, uri_length,uri,filename_length);
     strncat(filename,uri,filename_length);
+    debug("after strncat ,filename = %s, uri = %.*s,  filename_length = %d",filename, uri_length,uri,filename_length);
 
     char *last_comp = strrchr(filename, '/');
     char *last_dot = strrchr(last_comp, '.');
@@ -300,6 +305,9 @@ static void serve_static(int fd, char *filename, size_t filesize, xm_http_out_t 
         return ;
     }
 
+
+    /* 在这增加对 PHP 的支持 */
+
     int srcfd = open(filename, O_RDONLY, 0);
     check(srcfd > 2, "open error");
 
@@ -311,4 +319,6 @@ static void serve_static(int fd, char *filename, size_t filesize, xm_http_out_t 
     check(n == filesize, "rio_written error");
 
     munmap(srcaddr, filesize);
+
 }
+

@@ -133,18 +133,28 @@ int main(int argc, char *argv[])
     /*
      * create threadpool
      */
-//    xm_threadpool_t *threadpool = threadpool_init(cf.threadnum, cf.queuemaxnum);
-//    check(threadpool != NULL, "threadpool_init error");
+    xm_threadpool_t *threadpool = threadpool_init(cf.threadnum, cf.queuemaxnum);
+    check(threadpool != NULL, "threadpool_init error");
 
 
-
+    /*
+     * init timer
+     */
+    xm_timer_init();
 
     log_info("Xserver start");
     int i, n, fd;
+    int time;
 
     while(1){
-        n = xm_epoll_wait(epfd, events, MAXEVENTS, 0);
         
+        time = xm_find_timer();
+        debug("epoll wait time = %d",time);
+
+        n = xm_epoll_wait(epfd, events, MAXEVENTS, time);
+        
+        xm_handle_expire_timers();
+
         for(i = 0; i<n; i++){
             xm_http_request_t *r = (xm_http_request_t *)events[i].data.ptr;
             fd = r -> sockfd;
@@ -191,6 +201,9 @@ int main(int argc, char *argv[])
 
                     xm_epoll_add(epfd, connfd, &event);
 
+                    /* 添加超时事件，时间为默认的，如果超时就关闭连接 */
+                    xm_add_timer(request, TIMEOUT_DEFAULT, xm_http_close_conn);
+
                 } //end of while of accept 
             } else {
                 if((events[i].events & EPOLLERR) ||
@@ -202,14 +215,12 @@ int main(int argc, char *argv[])
                 }
 
                 log_info("new data from fd %d",fd);
-/*
                 rc = threadpool_add_task(threadpool, do_request, events[i].data.ptr, 0);
                 if(rc == 0){
                     int tag = threadpool_resize(threadpool, cf.threadnum*2, cf.queuemaxnum*2);
                     check(tag == 0, "threadpool_resize error");
                 }
-  */
-                do_request(events[i].data.ptr);
+                //do_request(events[i].data.ptr);
             }
         }
     }

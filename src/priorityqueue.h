@@ -1,8 +1,10 @@
 #ifndef PRIORITYQUEUE_H
 #define PRIORITYQUEUE_H
 
+#include <stddef.h>
 
-#define PQ_DEFAULT_CAPACITY  10
+
+#define XM_PQ_DEFAULT_CAPACITY  10
 
 typedef int (*xm_pq_comparator_pt)(void *i, void *j);
 
