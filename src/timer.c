@@ -6,6 +6,7 @@
  */
 
 #include <sys/time.h>
+#include <pthread.h>
 #include "priorityqueue.h"
 #include "timer.h"
 #include "dbg.h"
@@ -24,17 +25,24 @@ xm_pq_t xm_timer;
 /* 当前时间 */
 size_t xm_current_msec;
 
+pthread_mutex_t xm_time_lock;
+
+
 /* 更新时间 */
 static void xm_time_update()
 {
     struct timeval tv;
     int rc;
+    
+    pthread_mutex_lock(&xm_time_lock);
 
     rc = gettimeofday(&tv, NULL);
     check(rc == 0, "xm_time_update:gettimeofday error");
 
     xm_current_msec = tv.tv_sec * 1000 + tv.tv_usec / 1000;
     debug("time = %zu",xm_current_msec );
+    
+    pthread_mutex_unlock(&xm_time_lock);
 }
 
 
