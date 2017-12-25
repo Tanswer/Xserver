@@ -60,11 +60,6 @@ typedef struct xm_http_request_s {
     void *request_start;    /*请求行开始处*/
     void *request_end;      /*请求行结尾处*/
 
-    void *path_start;
-    void *path_end;
-    void *query_start;
-    void *query_end;
-
     struct list_head list;  /* 保存 header */
     void *cur_header_key_start;
     void *cur_header_key_end;
