@@ -21,8 +21,9 @@
 #include "util.h"
 #include "timer.h"
 #include "epoll.h"
+#include "daemon.h"
 
-#define CONF "xm.conf"
+#define CONF "/Home/Tanswer/Code/NP/http/xm.conf"
 
 extern struct epoll_event *events;
 
@@ -49,13 +50,14 @@ int main(int argc, char *argv[])
     int rc;     //保存返回结果
     char *conf = CONF;
     
+
     /*
      * parse argv 
      * more detail visit: http://www.gnu.org/software/libc/manual/html_node/Getopt.html
      */
     int opt = 0;
     int options_index = 0;
-    
+
     if (argc == 1) {
         usage();
         return 0;                    
@@ -110,6 +112,8 @@ int main(int argc, char *argv[])
 
     }
 
+    Init_daemon();
+    
     /* start listen */
     int lfd;
     struct sockaddr_in clientaddr;
