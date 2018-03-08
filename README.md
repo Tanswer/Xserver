@@ -29,6 +29,11 @@ cd Xserver
  1. memory pool
  2. keep-alive(timeout)
 
+### webbench
+
+![](http://test-1252727452.costj.myqcloud.com/2018-03-02%2010-26-42%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)
 
 
+### strace 追踪系统调用
+![](http://test-1252727452.costj.myqcloud.com/2018-03-02%2016-03-05%20%E7%9A%84%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)
  
