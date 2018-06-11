@@ -21,7 +21,7 @@
 #include "util.h"
 #include "timer.h"
 #include "epoll.h"
-#include "daemon.h"
+//#include "daemon.h"
 
 #define CONF "/Home/Tanswer/Code/NP/http/xm.conf"
 
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 
     }
 
-    Init_daemon();
+//    Init_daemon();
     
     /* start listen */
     int lfd;
@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
                     int tag = threadpool_resize(threadpool, cf.threadnum*2, cf.queuemaxnum*2);
                     check(tag == 0, "threadpool_resize error");
                 }
-                //do_request(events[i].data.ptr);
+//                do_request(events[i].data.ptr);
             }
         }
     }

@@ -22,31 +22,12 @@
 #include "xm_http.h"
 #include "rio.h"
 #include "timer.h"
+#include "dns.h"
 
-/* 服务器根目录 */
-static char *root = NULL;
-
-/* 得到文件类型 */
-static const char* get_filetype(const char *type);
-/* 解析uri 得到文件 */
-static void parse_uri(char *uri, int uri_length, char *filename, char *cgiargs);
-/* 出错处理 */
-static void do_error(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg);
-/* 静态请求回复 */
-static void serve_static(int fd, char *filename, size_t filesize, xm_http_out_t *out);
-
-
-/* 所以请求文件类型 */
-xm_type_t xm_type [] = 
-{
-    {".html","text/html"},
-    {".xml","text/xml"},
-    {"xhtml","application/xhtml+xml"},
-    {".txt","text/plain"},
-    {".jpg","image/jpeg"},
-    {NULL,"text/plain"}
-};
-
+/* 解析uri 得到域名 */
+static void parse_uri(char *uri, int uri_length, char *domainname);
+/* 请求回复 */
+static void Response(int fd, char *ips);
 
 
 void do_request(void *ptr)
@@ -54,13 +35,12 @@ void do_request(void *ptr)
     xm_http_request_t *r = (xm_http_request_t *)ptr;
 
     int fd = r -> sockfd;
-    char filename[SHORTLINE];
-    struct stat sbuf;
+    char domainname[SHORTLINE];
+    memset(domainname, 0, strlen(domainname));
     char *plast = NULL;
     int rc, n;
     size_t remain_size;
-    root = r -> root;
-
+    
     xm_del_timer(r);
 
     for(;;){ /* 循环读取客户数据并分析之 */
@@ -118,55 +98,20 @@ void do_request(void *ptr)
         }
 
         log_info("header line parse finished");
-        /* 处理HTTP Header */
-        xm_http_out_t *out = (xm_http_out_t *)malloc(sizeof(xm_http_out_t));
-        if(out == NULL){
-            log_err("no enough space for xm_http_out_t");
-            exit(1);
-        }
 
-        rc = xm_init_out(out, fd);
-        check(rc == XM_OK,"xm_init_out");
         
-        log_info("out init finished");
-        
-        parse_uri(r->uri_start, r->uri_end - r->uri_start,filename,NULL);
-        debug("filename = %s",filename);
-    
+        parse_uri(r->uri_start, r->uri_end - r->uri_start,domainname);
+        debug("domainname = %s",domainname);
+        if(strlen(domainname) == 0)
+            break;
 
-        /* 404 */
-        if(stat(filename,&sbuf) < 0){
-            do_error(fd, filename, "404","Not Found","server can not find the file");
-            continue;
-        }
 
-        /* 403 */
-        if(!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode) ){
-            do_error(fd, filename, "403","Forbidden","server can not read the file");
-            continue;
-        }
+        char ips[256];
+        memset(ips, 0, strlen(ips));
+        Resolve(domainname, ips);
+        debug("ips = %s", ips);
 
-        /* 最后修改时间 */
-        out -> mtime = sbuf.st_mtime;
-
-        xm_http_handle_header(r, out);
-        check(list_empty(&(r->list)) == 1, "header list should be empty");
-
-        if(out -> status == 0){
-            out -> status = XM_HTTP_OK;
-        }
-
-        debug("start serve_static");
-
-        serve_static(fd, filename, sbuf.st_size, out);
-
-        if(!out -> keep_alive) {
-            log_info("no keep_alive! ready to close");
-            free(out);
-        
-            goto close;
-        }
-        free(out);
+        Response(fd, ips);
     } 
 
     struct epoll_event event;
@@ -185,7 +130,9 @@ close:
 
 }
 
-static void parse_uri(char *uri, int uri_length, char *filename, char *cgiargs)
+
+// 从 uri 解析出域名
+static void parse_uri(char *uri, int uri_length, char *domainname)
 {
     check(uri !=NULL, "uri is NULL");
     /* uri_length can not be too long */
@@ -194,131 +141,38 @@ static void parse_uri(char *uri, int uri_length, char *filename, char *cgiargs)
         return ;
     }
     uri[uri_length] = '\0';
-
-    char *question_mark = strchr(uri,'?');
-    int filename_length;
-    if(question_mark){
-        filename_length = (int)(question_mark - uri);
-        debug("filename_length = (question_mark - uri) = %d",filename_length);
-    } else {
-        filename_length = uri_length;
-        debug("filename_length = uri_length = %d",filename_length);
-    }
-
-    if(cgiargs){
-        //to do
-    }
-
-    strcpy(filename, root);
-  
-    debug("before strncat ,filename = %s, uri = %.*s,  filename_length = %d",filename, uri_length,uri,filename_length);
-    strncat(filename,uri,filename_length);
-    debug("after strncat ,filename = %s, uri = %.*s,  filename_length = %d",filename, uri_length,uri,filename_length);
-
-    char *last_comp = strrchr(filename, '/');
-    char *last_dot = strrchr(last_comp, '.');
-    if(last_dot == NULL && filename[strlen(filename)-1] != '/'){
-        strcat(filename,"/");
-    }
-
-    if(filename[strlen(filename)-1] == '/'){
-        strcat(filename,"index.html");
-    }
-
-    log_info("filename = %s",filename);
+    
+    char *w = strstr(uri, "?dn=");
+    if(w != NULL)
+        strcpy(domainname, w+4);
+    else
+        domainname = NULL;
+    
+    log_info("domainname = %s",domainname);
     return ;
 }
 
-static const char *get_filetype(const char* type)
+
+static void Response(int fd, char *ips)
 {
-    if(type == NULL)
-        return "text/plain";
+    debug("start Response");
+    char header[MAXLINE];
+    size_t n;
 
-    int i;
-    for(i=0; xm_type[i].type != NULL; i++){
-        if(strcmp(type,xm_type[i].type) == 0)
-            return xm_type[i].value;
-    }
-    return xm_type[i].value;
-}
-
-static void do_error(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg)
-{
-    char header[MAXLINE], body[MAXLINE];
-
-    sprintf(body, "<html><title>Xserver Error</title>");
-    sprintf(body, "%s<body bgcolor=""ffffff"">\n", body);
-    sprintf(body, "%s%s:%s\n",body, errnum, shortmsg);
-    sprintf(body, "%s<p>%s: %s\n</p>",body, longmsg, cause);
-    sprintf(body, "%s<hr><em>XM Web Server</em>\n</body></html>",body);
-
-    sprintf(header, "HTTP/1.1 %s %s\r\n",errnum, shortmsg);
+    sprintf(header, "HTTP/1.1 200 OK");
+    sprintf(header, "%sConnection: close\r\n",header);
     sprintf(header, "%sServer: Xserver\r\n",header);
     sprintf(header, "%sContent-type: text/html\r\n",header);
-    sprintf(header, "%sConnection: close\r\n",header);
-    sprintf(header, "%sContent-lenght: %d\r\n\r\n",header, (int)strlen(body));
+    sprintf(header, "%sContent-Lenght: %zu\r\n",header, strlen(ips));
 
-    rio_writen(fd, header, strlen(header));
-    rio_writen(fd, body, strlen(body));
-
-    return ;
-}
-
-static void serve_static(int fd, char *filename, size_t filesize, xm_http_out_t *out)
-{
-    char header[MAXLINE];
-    char buf[SHORTLINE];
-    size_t n;
-    struct tm tm;
-    /* 得出文件类型 */
-    const char *dot_pos = strrchr(filename, '.');
-    const char *filetype = get_filetype(dot_pos);
-
-    sprintf(header, "HTTP/1.1 %d %s\r\n",out -> status, trans_statuscode_to_shortmsg(out->status));
-
-    if(out -> keep_alive) {
-        sprintf(header, "%sConnection: keep-alive\r\n",header);
-        sprintf(header, "%sKeep-Alive: timeout=%d\r\n",header,TIMEOUT_DEFAULT);
-    }
-
-
-    if(out -> modified){
-        sprintf(header, "%sContent-type: %s\r\n",header, filetype);
-        sprintf(header, "%sContent-lenght: %zu\r\n",header, filesize);
-        
-        /*把系统时间转换为本地时间  localtime_r 是线程安全的,详细请 man localtime_r*/
-        localtime_r(&(out->mtime), &tm);
-        /* format date and time */
-        strftime(buf, SHORTLINE, "%a, %d %b %Y %H:%M:%S GMT",&tm);
-
-        sprintf(header, "%sLast-Modified: %s\r\n",header, buf);
-    }
-
-    sprintf(header, "%sServer: Xserver\r\n",header);
     sprintf(header, "%s\r\n",header);
     /* header end */
     
     n = (size_t)rio_writen(fd, header, strlen(header));    
     check(n == strlen(header), "rio_writen error, errno = %d",errno);
 
-    if(!out -> modified){
-        return ;
-    }
 
-
-    /* 在这增加对 PHP 的支持 */
-
-    int srcfd = open(filename, O_RDONLY, 0);
-    check(srcfd > 2, "open error");
-
-    char *srcaddr = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
-    check(srcaddr != (void *)-1, "mmap error");
-    close(srcfd);
-
-    n = rio_writen(fd, srcaddr, filesize);
-    check(n == filesize, "rio_written error");
-
-    munmap(srcaddr, filesize);
-
+    n = rio_writen(fd, ips, strlen(ips));
+    check(n == strlen(ips), "rio_written error");
 }
 
